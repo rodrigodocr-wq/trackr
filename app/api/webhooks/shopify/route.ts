@@ -130,8 +130,8 @@ export async function POST(req: NextRequest) {
     await supabase.from('tracking_events').insert({
       tracking_record_id: trackingRecord.id,
       day: 0,
-      title: 'Pedido Confirmado',
-      description: 'Seu pedido foi recebido e confirmado com sucesso.',
+      title: 'Order Confirmed',
+      description: 'Your order has been received and confirmed.',
     })
 
     // 9. Enviar email de confirmação

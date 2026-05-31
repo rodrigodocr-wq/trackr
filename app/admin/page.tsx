@@ -22,16 +22,16 @@ interface Metrics {
 }
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  pending:          { label: 'Aguardando',      color: 'bg-yellow-100 text-yellow-700' },
-  processing:       { label: 'Processando',     color: 'bg-blue-100 text-blue-700' },
-  in_transit:       { label: 'Em trânsito',     color: 'bg-indigo-100 text-indigo-700' },
-  out_for_delivery: { label: 'Saiu p/ entrega', color: 'bg-purple-100 text-purple-700' },
-  delivered:        { label: 'Entregue',        color: 'bg-green-100 text-green-700' },
-  cancelled:        { label: 'Cancelado',       color: 'bg-red-100 text-red-700' },
+  pending:          { label: 'Pending',          color: 'bg-yellow-100 text-yellow-700' },
+  processing:       { label: 'Processing',       color: 'bg-blue-100 text-blue-700' },
+  in_transit:       { label: 'In Transit',       color: 'bg-indigo-100 text-indigo-700' },
+  out_for_delivery: { label: 'Out for Delivery', color: 'bg-purple-100 text-purple-700' },
+  delivered:        { label: 'Delivered',        color: 'bg-green-100 text-green-700' },
+  cancelled:        { label: 'Cancelled',        color: 'bg-red-100 text-red-700' },
 }
 
 function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 export default function AdminDashboard() {
@@ -42,14 +42,9 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('all')
 
   useEffect(() => {
-    fetch('/api/admin', {
-      headers: { 'x-admin-secret': process.env.NEXT_PUBLIC_ADMIN_SECRET || '' }
-    })
+    fetch('/api/admin', { headers: { 'x-admin-secret': process.env.NEXT_PUBLIC_ADMIN_SECRET || '' } })
       .then(r => r.json())
-      .then(d => {
-        setMetrics(d.metrics)
-        setOrders(d.orders)
-      })
+      .then(d => { setMetrics(d.metrics); setOrders(d.orders || []) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -67,14 +62,13 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
         <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-gray-500 text-sm">Carregando dashboard...</p>
+        <p className="text-gray-500 text-sm">Loading dashboard...</p>
       </div>
     </div>
   )
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-black text-white py-4 px-6 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div>
@@ -89,16 +83,14 @@ export default function AdminDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-
-        {/* Métricas */}
         {metrics && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[
-              { label: 'Total de pedidos',     value: metrics.totalOrders,    color: 'text-gray-900' },
-              { label: 'Pedidos ativos',        value: metrics.activeOrders,   color: 'text-blue-600' },
-              { label: 'Entregues',             value: metrics.deliveredOrders,color: 'text-green-600' },
-              { label: 'Tracking IDs gerados',  value: metrics.totalTracking,  color: 'text-purple-600' },
-              { label: 'E-mails enviados',      value: metrics.totalEmails,    color: 'text-orange-600' },
+              { label: 'Total orders',        value: metrics.totalOrders,     color: 'text-gray-900' },
+              { label: 'Active orders',       value: metrics.activeOrders,    color: 'text-blue-600' },
+              { label: 'Delivered',           value: metrics.deliveredOrders, color: 'text-green-600' },
+              { label: 'Tracking IDs issued', value: metrics.totalTracking,   color: 'text-purple-600' },
+              { label: 'Emails sent',         value: metrics.totalEmails,     color: 'text-orange-600' },
             ].map(m => (
               <div key={m.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
                 <p className="text-xs text-gray-400 mb-1">{m.label}</p>
@@ -108,11 +100,10 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Filtros */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col md:flex-row gap-3">
           <input
             type="text"
-            placeholder="Buscar por pedido, tracking, cliente..."
+            placeholder="Search by order, tracking ID or customer..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="flex-1 border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
@@ -122,33 +113,30 @@ export default function AdminDashboard() {
             onChange={e => setStatusFilter(e.target.value)}
             className="border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
           >
-            <option value="all">Todos os status</option>
+            <option value="all">All statuses</option>
             {Object.entries(STATUS_MAP).map(([k, v]) => (
               <option key={k} value={k}>{v.label}</option>
             ))}
           </select>
         </div>
 
-        {/* Tabela de pedidos */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-900">Pedidos</h2>
-            <span className="text-xs text-gray-400">{filtered.length} resultados</span>
+            <h2 className="text-sm font-semibold text-gray-900">Orders</h2>
+            <span className="text-xs text-gray-400">{filtered.length} results</span>
           </div>
 
           {filtered.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-400 text-sm">Nenhum pedido encontrado.</p>
+              <p className="text-gray-400 text-sm">No orders found.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    {['Pedido', 'Cliente', 'Produto', 'Tracking ID', 'Status', 'Data', 'Ação'].map(h => (
-                      <th key={h} className="text-left px-6 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
-                        {h}
-                      </th>
+                    {['Order', 'Customer', 'Product', 'Tracking ID', 'Status', 'Date', 'Action'].map(h => (
+                      <th key={h} className="text-left px-6 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -163,21 +151,14 @@ export default function AdminDashboard() {
                           <p className="text-gray-400 text-xs">{order.customerEmail}</p>
                         </td>
                         <td className="px-6 py-4 text-gray-600 max-w-[200px] truncate">{order.productName}</td>
-                        <td className="px-6 py-4 font-mono text-xs text-gray-700 bg-gray-50 rounded">{order.trackingId}</td>
+                        <td className="px-6 py-4 font-mono text-xs text-gray-700">{order.trackingId}</td>
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${s.color}`}>
-                            {s.label}
-                          </span>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${s.color}`}>{s.label}</span>
                         </td>
                         <td className="px-6 py-4 text-gray-400 text-xs whitespace-nowrap">{formatDate(order.createdAt)}</td>
                         <td className="px-6 py-4">
-                          <a
-                            href={`/track/${order.trackingId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-black underline hover:no-underline"
-                          >
-                            Ver tracking
+                          <a href={`/track/${order.trackingId}`} target="_blank" rel="noopener noreferrer" className="text-xs text-black underline hover:no-underline">
+                            View tracking
                           </a>
                         </td>
                       </tr>

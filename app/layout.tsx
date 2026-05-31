@@ -5,13 +5,13 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Trackr — Acompanhe seu pedido',
-  description: 'Sistema de rastreamento de pedidos',
+  title: 'Trackr — Track Your Order',
+  description: 'Order tracking system',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
+    <html lang="en-GB">
       <body className={inter.className}>{children}</body>
     </html>
   )

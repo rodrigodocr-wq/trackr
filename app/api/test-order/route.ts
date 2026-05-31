@@ -11,6 +11,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  try {
+    // Debug: checar variáveis
+  const envCheck = {
+    supabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    serviceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    shopDomain: !!process.env.SHOPIFY_SHOP_DOMAIN,
+    resendKey: !!process.env.RESEND_API_KEY,
+    appUrl: !!process.env.NEXT_PUBLIC_APP_URL,
+    cronSecret: !!process.env.CRON_SECRET,
+  }
+  console.log('ENV CHECK:', JSON.stringify(envCheck))
+
   const supabase = createServiceClient()
 
   // Dados de teste
@@ -127,12 +139,19 @@ export async function GET(req: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!
 
   return NextResponse.json({
-    ok: true,
-    trackingId,
-    orderNumber: testOrder.orderNumber,
-    emailSent: !emailResult.error,
-    emailError: emailResult.error,
-    trackingUrl: `${appUrl}/track/${trackingId}`,
-    adminUrl: `${appUrl}/admin`,
-  })
+      ok: true,
+      trackingId,
+      orderNumber: testOrder.orderNumber,
+      emailSent: !emailResult.error,
+      emailError: emailResult.error,
+      trackingUrl: `${appUrl}/track/${trackingId}`,
+      adminUrl: `${appUrl}/admin`,
+    })
+  } catch (err: any) {
+    console.error('TEST ORDER ERROR:', err)
+    return NextResponse.json({
+      error: err.message,
+      stack: err.stack?.split('\n').slice(0, 5),
+    }, { status: 500 })
+  }
 }

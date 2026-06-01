@@ -5,6 +5,7 @@ export function verifyShopifyWebhook(rawBody: Buffer, hmacHeader: string, shopDo
   const secrets: string[] = [
     process.env.SHOPIFY_WEBHOOK_SECRET || '',
     process.env.SHOPIFY_WEBHOOK_SECRET_2 || '',
+    process.env.SHOPIFY_WEBHOOK_SECRET_3 || '',
   ].filter(Boolean)
 
   for (const secret of secrets) {

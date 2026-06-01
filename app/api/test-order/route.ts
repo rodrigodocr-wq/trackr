@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   // Dados de teste
   const testOrder = {
-    shopDomain: process.env.SHOPIFY_SHOP_DOMAIN!,
+    shopDomain: req.nextUrl.searchParams.get('shop') || process.env.SHOPIFY_SHOP_DOMAIN!,
     shopifyOrderId: 'TEST-' + Date.now(),
     orderNumber: 'TEST-' + Math.floor(1000 + Math.random() * 9000),
     productName: 'Anti-Snoring Mouthguard — Premium',

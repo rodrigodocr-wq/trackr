@@ -42,7 +42,7 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('all')
 
   useEffect(() => {
-    fetch('/api/admin', { headers: { 'x-admin-secret': process.env.NEXT_PUBLIC_ADMIN_SECRET || '' } })
+    fetch('/api/admin', { headers: { 'x-admin-secret': process.env.NEXT_PUBLIC_CRON_SECRET || '' } })
       .then(r => r.json())
       .then(d => { setMetrics(d.metrics); setOrders(d.orders || []) })
       .finally(() => setLoading(false))

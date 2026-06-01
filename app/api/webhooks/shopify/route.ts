@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { verifyShopifyWebhook, extractOrderData } from '@/lib/shopify'
 import { generateTrackingId, getExpiresAt } from '@/lib/tracking'
+import { getLocale, translations } from '@/lib/i18n'
 
 export const dynamic = 'force-dynamic'
 
@@ -125,12 +126,15 @@ export async function POST(req: NextRequest) {
 
     if (trackErr) throw trackErr
 
-    // 8. Inserir primeiro evento (Dia 0)
+    // 8. Inserir primeiro evento (Dia 0) no idioma correcto
+    const locale = getLocale(shopDomain)
+    const tr = translations[locale]
+    const firstMilestone = tr.milestones[0]
     await supabase.from('tracking_events').insert({
       tracking_record_id: trackingRecord.id,
       day: 0,
-      title: 'Order Confirmed',
-      description: 'Your order has been received and confirmed.',
+      title: firstMilestone.title,
+      description: firstMilestone.description,
     })
 
     console.log(`✅ Pedido #${orderNumber} processado — Tracking: ${trackingId} — Email será enviado no dia 3`)

@@ -15,6 +15,7 @@ export async function GET() {
     cronSecret: !!process.env.CRON_SECRET,
     // partial values for debug (first 4 chars only)
     cronSecretPrefix: process.env.CRON_SECRET?.substring(0, 4) ?? "NOT_SET",
+    brDomains: process.env.SHOPIFY_BR_DOMAINS ?? "NOT_SET",
     supabaseUrlValue: process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 30) ?? "NOT_SET",
   }
 

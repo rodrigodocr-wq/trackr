@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getOrderDay } from '@/lib/tracking'
-import { sendTrackingUpdateEmail } from '@/lib/email'
+import { sendTrackingUpdateEmail, sendOrderConfirmationEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
@@ -85,30 +85,62 @@ export async function GET(req: NextRequest) {
           description: milestone.description,
         })
 
-        // Enviar email de update (apenas em milestones importantes)
-        const importantDays = [3, 5, 12, 20, 30, 50, 70, 90, 115]
+        // Enviar emails em dias importantes
+        const updateDays = [5, 12, 20, 30, 50, 70, 90, 115]
         const customer = order.customers as any
 
-        if (importantDays.includes(milestone.day) && customer?.email) {
-          const emailResult = await sendTrackingUpdateEmail({
-            to: customer.email,
-            customerName: customer.name,
-            orderNumber: order.order_number,
-            trackingId: record.tracking_id,
-            updateTitle: milestone.title,
-            updateDescription: milestone.description,
-          })
+        if (customer?.email) {
+          let emailResult: any = null
 
-          // Log do email
-          await supabase.from('email_logs').insert({
-            order_id: order.id,
-            tracking_id: record.tracking_id,
-            email_to: customer.email,
-            subject: `Atualização do pedido #${order.order_number} — ${milestone.title}`,
-            status: emailResult.error ? 'failed' : 'sent',
-          })
+          // Dia 3: email de confirmação com código TRK (primeiro email)
+          if (milestone.day === 3) {
+            // Buscar dados completos do pedido
+            const { data: fullOrder } = await supabase
+              .from('orders')
+              .select('product_name, shipping_address')
+              .eq('id', order.id)
+              .single()
 
-          if (!emailResult.error) emailsSent++
+            emailResult = await sendOrderConfirmationEmail({
+              to: customer.email,
+              customerName: customer.name,
+              orderNumber: order.order_number,
+              productName: fullOrder?.product_name || '',
+              trackingId: record.tracking_id,
+              shippingAddress: fullOrder?.shipping_address || '',
+            })
+
+            await supabase.from('email_logs').insert({
+              order_id: order.id,
+              tracking_id: record.tracking_id,
+              email_to: customer.email,
+              subject: `Your order #${order.order_number} is confirmed — Tracking: ${record.tracking_id}`,
+              status: emailResult?.error ? 'failed' : 'sent',
+            })
+
+            if (!emailResult?.error) emailsSent++
+
+          // Outros dias: email de update
+          } else if (updateDays.includes(milestone.day)) {
+            emailResult = await sendTrackingUpdateEmail({
+              to: customer.email,
+              customerName: customer.name,
+              orderNumber: order.order_number,
+              trackingId: record.tracking_id,
+              updateTitle: milestone.title,
+              updateDescription: milestone.description,
+            })
+
+            await supabase.from('email_logs').insert({
+              order_id: order.id,
+              tracking_id: record.tracking_id,
+              email_to: customer.email,
+              subject: `Order #${order.order_number} update — ${milestone.title}`,
+              status: emailResult?.error ? 'failed' : 'sent',
+            })
+
+            if (!emailResult?.error) emailsSent++
+          }
         }
       }
     }

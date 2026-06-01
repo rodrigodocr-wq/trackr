@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { verifyShopifyWebhook, extractOrderData } from '@/lib/shopify'
 import { generateTrackingId, getExpiresAt } from '@/lib/tracking'
-import { sendOrderConfirmationEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
@@ -134,32 +133,14 @@ export async function POST(req: NextRequest) {
       description: 'Your order has been received and confirmed.',
     })
 
-    // 9. Enviar email de confirmação
-    const emailResult = await sendOrderConfirmationEmail({
-      to: customer.email,
-      customerName: customer.name,
-      orderNumber,
-      productName,
-      trackingId,
-      shippingAddress,
-    })
-
-    // 10. Registrar email no log
-    await supabase.from('email_logs').insert({
-      order_id: newOrder.id,
-      tracking_id: trackingId,
-      email_to: customer.email,
-      subject: `Seu pedido #${orderNumber} foi confirmado! Código: ${trackingId}`,
-      status: emailResult.error ? 'failed' : 'sent',
-    })
-
-    console.log(`✅ Pedido #${orderNumber} processado — Tracking: ${trackingId}`)
+    console.log(`✅ Pedido #${orderNumber} processado — Tracking: ${trackingId} — Email será enviado no dia 3`)
 
     return NextResponse.json({
       ok: true,
       trackingId,
       orderNumber,
-      emailSent: !emailResult.error,
+      emailSent: false,
+      note: 'Confirmation email will be sent on day 3',
     })
   } catch (err: any) {
     console.error('Erro no webhook:', err)

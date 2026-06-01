@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
+import { translations, type Locale } from '@/lib/i18n'
 
 interface TrackingEvent {
   id: string
@@ -12,6 +13,7 @@ interface TrackingEvent {
 }
 
 interface TrackingData {
+  locale: Locale
   order: {
     orderNumber: string
     productName: string
@@ -29,26 +31,25 @@ interface TrackingData {
   }
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-GB', {
-    day: '2-digit', month: 'long', year: 'numeric'
-  })
+function formatDate(dateStr: string, locale: Locale) {
+  const l = locale === 'pt-BR' ? 'pt-BR' : 'en-GB'
+  return new Date(dateStr).toLocaleDateString(l, { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
-function formatDateTime(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-GB', {
-    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-  })
+function formatDateTime(dateStr: string, locale: Locale) {
+  const l = locale === 'pt-BR' ? 'pt-BR' : 'en-GB'
+  return new Date(dateStr).toLocaleDateString(l, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, locale }: { status: string; locale: Locale }) {
+  const t = translations[locale]
   const map: Record<string, { label: string; color: string }> = {
-    pending:           { label: 'Pending',           color: 'bg-yellow-100 text-yellow-800' },
-    processing:        { label: 'Processing',        color: 'bg-blue-100 text-blue-800' },
-    in_transit:        { label: 'In Transit',        color: 'bg-indigo-100 text-indigo-800' },
-    out_for_delivery:  { label: 'Out for Delivery',  color: 'bg-purple-100 text-purple-800' },
-    delivered:         { label: 'Delivered',         color: 'bg-green-100 text-green-800' },
-    cancelled:         { label: 'Cancelled',         color: 'bg-red-100 text-red-800' },
+    pending:          { label: t.status.pending,          color: 'bg-yellow-100 text-yellow-800' },
+    processing:       { label: t.status.processing,       color: 'bg-blue-100 text-blue-800' },
+    in_transit:       { label: t.status.in_transit,       color: 'bg-indigo-100 text-indigo-800' },
+    out_for_delivery: { label: t.status.out_for_delivery, color: 'bg-purple-100 text-purple-800' },
+    delivered:        { label: t.status.delivered,        color: 'bg-green-100 text-green-800' },
+    cancelled:        { label: t.status.cancelled,        color: 'bg-red-100 text-red-800' },
   }
   const s = map[status] || { label: status, color: 'bg-gray-100 text-gray-800' }
   return (
@@ -80,11 +81,14 @@ export default function TrackingPage() {
     load()
   }, [trackingId])
 
+  const locale: Locale = data?.locale || 'en-GB'
+  const tr = translations[locale]
+
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
         <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-gray-500 text-sm">Loading your order details...</p>
+        <p className="text-gray-500 text-sm">{tr.loading}</p>
       </div>
     </div>
   )
@@ -97,8 +101,8 @@ export default function TrackingPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Order not found</h2>
-        <p className="text-gray-500 text-sm">Please check your tracking code and try again.</p>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">{tr.orderNotFound}</h2>
+        <p className="text-gray-500 text-sm">{tr.orderNotFoundDesc}</p>
         <p className="text-gray-400 text-xs mt-2 font-mono">{trackingId}</p>
       </div>
     </div>
@@ -114,61 +118,59 @@ export default function TrackingPage() {
       <div className="bg-black text-white py-4 px-6">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <h1 className="text-lg font-bold tracking-widest">TRACKR</h1>
-          <span className="text-gray-400 text-xs">Order Tracking System</span>
+          <span className="text-gray-400 text-xs">{tr.appSubtitle}</span>
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="bg-black px-6 py-5">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-gray-400 text-xs mb-1">Tracking code</p>
+                <p className="text-gray-400 text-xs mb-1">{tr.trackingCode}</p>
                 <p className="text-white text-2xl font-bold tracking-widest">{order.trackingId}</p>
               </div>
-              <StatusBadge status={order.status} />
+              <StatusBadge status={order.status} locale={locale} />
             </div>
           </div>
 
           <div className="px-6 py-5 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-gray-400 mb-1">Order number</p>
+                <p className="text-xs text-gray-400 mb-1">{tr.orderNumber}</p>
                 <p className="text-sm font-semibold text-gray-900">#{order.orderNumber}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">Order date</p>
-                <p className="text-sm font-semibold text-gray-900">{formatDate(order.createdAt)}</p>
+                <p className="text-xs text-gray-400 mb-1">{tr.orderDate}</p>
+                <p className="text-sm font-semibold text-gray-900">{formatDate(order.createdAt, locale)}</p>
               </div>
               <div className="col-span-2">
-                <p className="text-xs text-gray-400 mb-1">Product</p>
+                <p className="text-xs text-gray-400 mb-1">{tr.product}</p>
                 <p className="text-sm font-semibold text-gray-900">{order.productName}</p>
               </div>
               <div className="col-span-2">
-                <p className="text-xs text-gray-400 mb-1">Delivery address</p>
+                <p className="text-xs text-gray-400 mb-1">{tr.deliveryAddress}</p>
                 <p className="text-sm font-semibold text-gray-900">{order.shippingAddress}</p>
               </div>
             </div>
 
             {lastEvent && (
               <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                <p className="text-xs text-blue-500 font-medium mb-1">Latest update</p>
+                <p className="text-xs text-blue-500 font-medium mb-1">{tr.latestUpdate}</p>
                 <p className="text-sm font-semibold text-blue-900">{lastEvent.title}</p>
                 <p className="text-xs text-blue-700 mt-1">{lastEvent.description}</p>
-                <p className="text-xs text-blue-400 mt-2">{formatDateTime(lastEvent.triggered_at)}</p>
+                <p className="text-xs text-blue-400 mt-2">{formatDateTime(lastEvent.triggered_at, locale)}</p>
               </div>
             )}
           </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-6">Tracking history</h2>
-
+          <h2 className="text-sm font-semibold text-gray-900 mb-6">{tr.trackingHistory}</h2>
           {tracking.events.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-400 text-sm">No updates yet.</p>
-              <p className="text-gray-300 text-xs mt-1">Updates will appear here shortly.</p>
+              <p className="text-gray-400 text-sm">{tr.noUpdates}</p>
+              <p className="text-gray-300 text-xs mt-1">{tr.noUpdatesDesc}</p>
             </div>
           ) : (
             <div className="space-y-0">
@@ -181,13 +183,9 @@ export default function TrackingPage() {
                     )}
                   </div>
                   <div className="pb-5 flex-1">
-                    <p className={`text-sm font-semibold ${idx === 0 ? 'text-gray-900' : 'text-gray-500'}`}>
-                      {event.title}
-                    </p>
-                    <p className={`text-xs mt-0.5 ${idx === 0 ? 'text-gray-600' : 'text-gray-400'}`}>
-                      {event.description}
-                    </p>
-                    <p className="text-xs text-gray-300 mt-1">{formatDateTime(event.triggered_at)}</p>
+                    <p className={`text-sm font-semibold ${idx === 0 ? 'text-gray-900' : 'text-gray-500'}`}>{event.title}</p>
+                    <p className={`text-xs mt-0.5 ${idx === 0 ? 'text-gray-600' : 'text-gray-400'}`}>{event.description}</p>
+                    <p className="text-xs text-gray-300 mt-1">{formatDateTime(event.triggered_at, locale)}</p>
                   </div>
                 </div>
               ))}
@@ -196,7 +194,7 @@ export default function TrackingPage() {
         </div>
 
         <p className="text-center text-xs text-gray-400 pb-4">
-          Tracking available until {formatDate(tracking.expiresAt)} · {order.trackingId}
+          {tr.trackingUntil} {formatDate(tracking.expiresAt, locale)} · {order.trackingId}
         </p>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { generateTrackingId, getExpiresAt } from '@/lib/tracking'
+import { getLocale, translations } from '@/lib/i18n'
 import { sendOrderConfirmationEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'

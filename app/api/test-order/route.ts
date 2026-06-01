@@ -110,12 +110,14 @@ export async function GET(req: NextRequest) {
     })
     .select('id').single()
 
-  // Inserir evento inicial
+  // Inserir evento inicial no idioma correcto
+  const locale = getLocale(testOrder.shopDomain)
+  const firstMilestone = translations[locale].milestones[0]
   await supabase.from('tracking_events').insert({
     tracking_record_id: trackingRecord!.id,
     day: 0,
-    title: 'Order Confirmed',
-    description: 'Your order has been received and confirmed.',
+    title: firstMilestone.title,
+    description: firstMilestone.description,
   })
 
   // Enviar email

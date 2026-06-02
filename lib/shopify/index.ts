@@ -6,6 +6,7 @@ export function verifyShopifyWebhook(rawBody: Buffer, hmacHeader: string, shopDo
     process.env.SHOPIFY_WEBHOOK_SECRET || '',
     process.env.SHOPIFY_WEBHOOK_SECRET_2 || '',
     process.env.SHOPIFY_WEBHOOK_SECRET_3 || '',
+    process.env.SHOPIFY_WEBHOOK_SECRET_4 || '',
   ].filter(Boolean)
 
   for (const secret of secrets) {

@@ -9,10 +9,11 @@ interface SendOrderEmailParams {
   productName: string
   trackingId: string
   shippingAddress: string
+  storeName?: string
 }
 
 export async function sendOrderConfirmationEmail(params: SendOrderEmailParams) {
-  const { to, customerName, orderNumber, productName, trackingId, shippingAddress } = params
+  const { to, customerName, orderNumber, productName, trackingId, shippingAddress, storeName } = params
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!
   const trackingUrl = `${appUrl}/track/${trackingId}`
 
@@ -81,7 +82,7 @@ export async function sendOrderConfirmationEmail(params: SendOrderEmailParams) {
 </html>`
 
   const result = await resend.emails.send({
-    from: `${process.env.RESEND_FROM_NAME || 'Support'} <${process.env.RESEND_FROM_EMAIL!}>`,
+    from: `${storeName || process.env.RESEND_FROM_NAME || 'Support'} <${process.env.RESEND_FROM_EMAIL!}>`,
     to,
     subject: `Your order #${orderNumber} is confirmed — Tracking: ${trackingId}`,
     html,

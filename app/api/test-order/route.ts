@@ -26,12 +26,30 @@ export async function GET(req: NextRequest) {
 
   const supabase = createServiceClient()
 
+  const shopDomain = req.nextUrl.searchParams.get('shop') === 'ninja'
+    ? '2b9mrg-5j.myshopify.com'
+    : process.env.SHOPIFY_SHOP_DOMAIN!
+
+  // Buscar nome e produto da loja
+  const { data: storeRow } = await supabase
+    .from('stores')
+    .select('name')
+    .eq('shop_domain', shopDomain)
+    .single()
+
+  const storeName = storeRow?.name || 'Store'
+
+  const productByShop: Record<string, string> = {
+    '2b9mrg-5j.myshopify.com': 'Ninja Kitchen Appliance',
+  }
+  const productName = productByShop[shopDomain] || 'Anti-Snoring Mouthguard — Premium'
+
   // Dados de teste
   const testOrder = {
-    shopDomain: req.nextUrl.searchParams.get('shop') || process.env.SHOPIFY_SHOP_DOMAIN!,
+    shopDomain,
     shopifyOrderId: 'TEST-' + Date.now(),
     orderNumber: 'TEST-' + Math.floor(1000 + Math.random() * 9000),
-    productName: 'Anti-Snoring Mouthguard — Premium',
+    productName,
     shippingAddress: 'London, United Kingdom',
     customer: {
       shopifyCustomerId: 'TEST-CUSTOMER-001',
@@ -128,6 +146,7 @@ export async function GET(req: NextRequest) {
     productName: testOrder.productName,
     trackingId,
     shippingAddress: testOrder.shippingAddress,
+    storeName,
   })
 
   // Log do email

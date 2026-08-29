@@ -129,6 +129,7 @@ export async function GET(req: NextRequest) {
               trackingId: record.tracking_id,
               updateTitle: milestone.title,
               updateDescription: milestone.description,
+              day: milestone.day,
             })
 
             await supabase.from('email_logs').insert({

@@ -1,11 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { generateTrackingId, getExpiresAt } from '@/lib/tracking'
-import { sendOrderConfirmationEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
-const NINJA_DOMAIN = '2b9mrg-5j.myshopify.com'
+const SHOP_DOMAIN = 'kgvimi-7m.myshopify.com'
+
+const ORDERS = [
+  { number: '1001', shopifyId: '7794687181133', name: 'belle zan',                          email: 'lojazanbelle@gmail.com',            product: 'Ninja StaySharp 14-Piece Stainless Knife Set', address: 'GB', created: '2026-07-09T12:00:00+00:00' },
+  { number: '1003', shopifyId: '7913991078221', name: 'Mark Guyett',                         email: 'markguyett@yahoo.com',              product: 'Ninja StaySharp 14-Piece Stainless Knife Set', address: 'GB', created: '2026-08-25T07:32:00+00:00' },
+  { number: '1004', shopifyId: '7914011525453', name: 'Lorraine Phillips',                   email: 'lainep1989@gmail.com',              product: 'Ninja StaySharp 14-Piece Stainless Knife Set', address: 'GB', created: '2026-08-25T07:49:00+00:00' },
+  { number: '1005', shopifyId: '7914256335181', name: 'Lorraine Gamblin',                    email: 'lorsg58@gmail.com',                 product: 'Ninja StaySharp 14-Piece Stainless Knife Set', address: 'GB', created: '2026-08-25T10:04:00+00:00' },
+  { number: '1006', shopifyId: '7916506939725', name: 'Jason Jones',                         email: 'lordjasonjones@hotmail.com',        product: 'Ninja StaySharp 14-Piece Stainless Knife Set', address: 'GB', created: '2026-08-25T19:59:00+00:00' },
+  { number: '1007', shopifyId: '7916985549133', name: 'Colin Mcqueen',                       email: 'colinmcqueen59@gmail.com',          product: 'Ninja StaySharp 14-Piece Stainless Knife Set', address: 'GB', created: '2026-08-25T23:04:00+00:00' },
+  { number: '1008', shopifyId: '7917029196109', name: 'Aurela Domi',                         email: 'ladihoxha2222@gmail.com',           product: 'Ninja StaySharp 14-Piece Stainless Knife Set', address: 'GB', created: '2026-08-25T23:45:00+00:00' },
+  { number: '1009', shopifyId: '7917033685325', name: 'Tracy Reynolds',                      email: 'reynoldstracy448@gmail.com',        product: 'Ninja StaySharp 14-Piece Stainless Knife Set', address: 'GB', created: '2026-08-25T23:51:00+00:00' },
+  { number: '1010', shopifyId: '7917108330829', name: 'Hentry Kalappurakkudi Poulose',       email: 'hentryka74@gmail.com',              product: 'Ninja StaySharp 14-Piece Stainless Knife Set', address: 'GB', created: '2026-08-26T02:15:00+00:00' },
+  { number: '1011', shopifyId: '7918802075981', name: 'Lorraine Phillips',                   email: 'lainep1989@gmail.com',              product: 'Ninja StaySharp 14-Piece Stainless Knife Set', address: 'GB', created: '2026-08-26T12:00:00+00:00' },
+  { number: '1012', shopifyId: '7925806432589', name: 'Jennifer Cole',                       email: 'clarkej68@sky.com',                 product: 'Ninja StaySharp 14-Piece Stainless Knife Set', address: 'GB', created: '2026-08-28T12:20:00+00:00' },
+  { number: '1013', shopifyId: '7925929443661', name: 'Elizabeth Irwin',                     email: 'melizabethirwin1956@outlook.com',   product: 'Ninja StaySharp 14-Piece Stainless Knife Set', address: 'GB', created: '2026-08-28T12:57:00+00:00' },
+  { number: '1014', shopifyId: '7926281634125', name: 'Mark Morrison',                       email: 'katemorrison17@yahoo.co.uk',        product: 'Ninja StaySharp 14-Piece Stainless Knife Set', address: 'GB', created: '2026-08-28T15:02:00+00:00' },
+  { number: '1015', shopifyId: '7926337732941', name: 'Caroline Drew',                       email: 'kazdrew57@gmail.com',               product: 'Ninja StaySharp 14-Piece Stainless Knife Set', address: 'GB', created: '2026-08-28T15:26:00+00:00' },
+  { number: '1017', shopifyId: '7927107846477', name: 'Sarah Whittingham',                   email: 'sarahwhittingham@mail.com',         product: 'Ninja StaySharp 14-Piece Stainless Knife Set', address: 'GB', created: '2026-08-28T22:05:00+00:00' },
+]
 
 export async function GET(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get('secret')
@@ -13,177 +30,54 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const sendEmails = req.nextUrl.searchParams.get('emails') === 'true'
-  const ninjaToken = process.env.NINJA_ACCESS_TOKEN || ''
   const supabase = createServiceClient()
+  const results = []
 
-  try {
-    // 1. Buscar store
-    const { data: store } = await supabase
-      .from('stores')
-      .select('id, name')
-      .eq('shop_domain', NINJA_DOMAIN)
-      .single()
-
-    if (!store) return NextResponse.json({ error: 'Ninja UK not found' }, { status: 404 })
-
-    // 2. Buscar pedidos via GraphQL (suportado pelo atkn_)
-    const query = `{
-      orders(first: 52, reverse: true) {
-        edges {
-          node {
-            id
-            name
-            email
-            createdAt
-            displayFulfillmentStatus
-            shippingAddress { city country }
-            customer { id firstName lastName email }
-            lineItems(first: 1) {
-              edges { node { title } }
-            }
-          }
-        }
-      }
-    }`
-
-    const gqlRes = await fetch(
-      `https://${NINJA_DOMAIN}/admin/api/2024-01/graphql.json`,
-      {
-        method: 'POST',
-        headers: {
-          'X-Shopify-Access-Token': ninjaToken,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query }),
-      }
-    )
-
-    const gqlData = await gqlRes.json()
-
-    if (gqlData.errors) {
-      return NextResponse.json({ error: 'GraphQL error', details: gqlData.errors }, { status: 500 })
-    }
-
-    const orders = gqlData.data?.orders?.edges?.map((e: any) => e.node) || []
-
-    if (orders.length === 0) {
-      return NextResponse.json({ message: 'No orders found', total: 0 })
-    }
-
-    let imported = 0, skipped = 0, failed = 0
-    const results = []
-
-    for (const order of orders) {
-      try {
-        // ID numérico do Shopify
-        const shopifyOrderId = order.id.replace('gid://shopify/Order/', '')
-        const orderNumber = order.name?.replace('#', '') || shopifyOrderId
-        const customerEmail = order.email || order.customer?.email || ''
-        const customerName = order.customer
-          ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim()
-          : 'Customer'
-        const productName = order.lineItems?.edges?.[0]?.node?.title || 'Ninja Product'
-        const shippingAddress = order.shippingAddress
-          ? `${order.shippingAddress.city || ''}, ${order.shippingAddress.country || ''}`.replace(/^,\s*/, '')
-          : 'United Kingdom'
-
-        // Verificar se já existe
-        const { data: existing } = await supabase
-          .from('orders')
-          .select('id, tracking_id')
-          .eq('shopify_order_id', shopifyOrderId)
-          .eq('store_id', store.id)
-          .maybeSingle()
-
-        if (existing) {
-          skipped++
-          results.push({ orderNumber, status: 'skipped', trackingId: existing.tracking_id })
-          continue
-        }
-
-        // Customer
-        const shopifyCustomerId = order.customer?.id?.replace('gid://shopify/Customer/', '') || `guest-${shopifyOrderId}`
-        let { data: customer } = await supabase
-          .from('customers')
-          .select('id')
-          .eq('store_id', store.id)
-          .eq('shopify_customer_id', shopifyCustomerId)
-          .maybeSingle()
-
-        if (!customer) {
-          const { data: newCustomer } = await supabase
-            .from('customers')
-            .insert({ store_id: store.id, shopify_customer_id: shopifyCustomerId, name: customerName, email: customerEmail })
-            .select('id').single()
-          customer = newCustomer
-        }
-
-        const trackingId = generateTrackingId()
-
-        const { data: newOrder } = await supabase
-          .from('orders')
-          .insert({
-            store_id: store.id,
-            customer_id: customer!.id,
-            shopify_order_id: shopifyOrderId,
-            order_number: orderNumber,
-            product_name: productName,
-            shipping_address: shippingAddress,
-            status: 'processing',
-            tracking_id: trackingId,
-          })
-          .select('id, created_at').single()
-
-        const { data: trackingRecord } = await supabase
-          .from('tracking_records')
-          .insert({ order_id: newOrder!.id, tracking_id: trackingId, current_day: 0, expires_at: getExpiresAt(newOrder!.created_at, 120) })
-          .select('id').single()
-
-        await supabase.from('tracking_events').insert({
-          tracking_record_id: trackingRecord!.id,
-          day: 0,
-          title: 'Order Confirmed',
-          description: 'Your order has been received and confirmed.',
-        })
-
-        let emailSent = false
-        if (sendEmails && customerEmail) {
-          const emailResult = await sendOrderConfirmationEmail({
-            to: customerEmail,
-            customerName,
-            orderNumber,
-            productName,
-            trackingId,
-            shippingAddress,
-            storeName: store.name,
-          })
-          emailSent = !emailResult.error
-          await supabase.from('email_logs').insert({
-            order_id: newOrder!.id,
-            tracking_id: trackingId,
-            email_to: customerEmail,
-            subject: `Your order #${orderNumber} is confirmed — Tracking: ${trackingId}`,
-            status: emailSent ? 'sent' : 'failed',
-          })
-        }
-
-        imported++
-        results.push({ orderNumber, status: 'imported', trackingId, emailSent, customer: customerName })
-
-      } catch (err: any) {
-        failed++
-        results.push({ orderNumber: order.name, status: 'error', error: err.message })
-      }
-    }
-
-    return NextResponse.json({
-      ok: true,
-      summary: { total: orders.length, imported, skipped, failed },
-      results,
-    })
-
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  let { data: store } = await supabase.from('stores').select('id').eq('shop_domain', SHOP_DOMAIN).maybeSingle()
+  if (!store) {
+    const { data: ns } = await supabase.from('stores').insert({ shop_domain: SHOP_DOMAIN, access_token: '', name: 'NINJA' }).select('id').single()
+    store = ns
   }
+
+  for (const o of ORDERS) {
+    try {
+      const { data: existing } = await supabase.from('orders').select('id, tracking_id').eq('shopify_order_id', o.shopifyId).maybeSingle()
+      if (existing) { results.push({ order: o.number, status: 'skipped', trackingId: existing.tracking_id }); continue }
+
+      let { data: customer } = await supabase.from('customers').select('id').eq('store_id', store!.id).eq('email', o.email).maybeSingle()
+      if (!customer) {
+        const { data: nc } = await supabase.from('customers').insert({ store_id: store!.id, shopify_customer_id: o.shopifyId, name: o.name, email: o.email }).select('id').single()
+        customer = nc
+      }
+
+      let trackingId = generateTrackingId()
+      for (let i = 0; i < 5; i++) {
+        const { data: ex } = await supabase.from('orders').select('id').eq('tracking_id', trackingId).maybeSingle()
+        if (!ex) break
+        trackingId = generateTrackingId()
+      }
+
+      const { data: newOrder } = await supabase.from('orders').insert({
+        store_id: store!.id, customer_id: customer!.id, shopify_order_id: o.shopifyId,
+        order_number: o.number, product_name: o.product, shipping_address: o.address,
+        status: 'processing', tracking_id: trackingId, created_at: o.created,
+      }).select('id').single()
+
+      const { data: tr } = await supabase.from('tracking_records').insert({
+        order_id: newOrder!.id, tracking_id: trackingId, current_day: 0,
+        expires_at: getExpiresAt(o.created, 120),
+      }).select('id').single()
+
+      await supabase.from('tracking_events').insert({
+        tracking_record_id: tr!.id, day: 0,
+        title: 'Order Confirmed', description: 'Your order has been received and confirmed.',
+      })
+
+      results.push({ order: o.number, status: 'created', trackingId, email: o.email })
+    } catch (err: any) {
+      results.push({ order: o.number, status: 'error', error: err.message })
+    }
+  }
+
+  return NextResponse.json({ ok: true, total: ORDERS.length, results })
 }

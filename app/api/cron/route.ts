@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
         id,
         order_number,
         product_name,
+        shopify_order_id,
         status,
         customers ( name, email ),
         stores ( id )

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getOrderDay } from '@/lib/tracking'
+import { fulfillShopifyOrder } from '@/lib/shopify'
 import { sendTrackingUpdateEmail, sendOrderConfirmationEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
@@ -119,6 +120,19 @@ export async function GET(req: NextRequest) {
             })
 
             if (!emailResult?.error) emailsSent++
+
+            // Actualizar Shopify com tracking e status fulfilled
+            const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN!
+            const accessToken = process.env.SHOPIFY_ACCESS_TOKEN!
+            const shopifyOrderId = (order as any).shopify_order_id
+            if (shopifyOrderId) {
+              await fulfillShopifyOrder({
+                shopDomain,
+                shopifyOrderId,
+                trackingId: record.tracking_id,
+                accessToken,
+              })
+            }
 
           // Outros dias: email de update
           } else if (updateDays.includes(milestone.day)) {

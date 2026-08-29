@@ -24,3 +24,4 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ ok: true, day, result })
 }
+# test-email route added

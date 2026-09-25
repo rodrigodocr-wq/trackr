@@ -13,32 +13,48 @@ export async function GET(req: NextRequest) {
   const shopDomain = req.nextUrl.searchParams.get('shop') || 'ez1exp-4e.myshopify.com'
   const supabase = createServiceClient()
 
-  // Buscar pedidos sem email enviado
+  // Buscar store
+  const { data: store } = await supabase
+    .from('stores')
+    .select('id, name')
+    .eq('shop_domain', shopDomain)
+    .single()
+
+  if (!store) return NextResponse.json({ error: 'Store not found' }, { status: 404 })
+
+  // Buscar todos os pedidos da loja
   const { data: orders } = await supabase
     .from('orders')
-    .select(`
-      id, order_number, product_name, shipping_address, tracking_id,
-      customers ( name, email ),
-      stores ( name, shop_domain )
-    `)
-    .eq('stores.shop_domain', shopDomain)
-    .not('id', 'in', 
-      supabase.from('email_logs').select('order_id').eq('status', 'sent')
-    )
+    .select('id, order_number, product_name, shipping_address, tracking_id, customers(name, email)')
+    .eq('store_id', store.id)
     .order('order_number')
 
   if (!orders || orders.length === 0) {
-    return NextResponse.json({ message: 'No pending orders found', sent: 0 })
+    return NextResponse.json({ message: 'No orders found', sent: 0 })
+  }
+
+  // Buscar emails já enviados
+  const { data: sentLogs } = await supabase
+    .from('email_logs')
+    .select('order_id')
+    .eq('status', 'sent')
+    .in('order_id', orders.map(o => o.id))
+
+  const sentOrderIds = new Set((sentLogs || []).map((l: any) => l.order_id))
+
+  // Filtrar pedidos sem email enviado
+  const pending = orders.filter(o => !sentOrderIds.has(o.id))
+
+  if (pending.length === 0) {
+    return NextResponse.json({ message: 'All orders already have emails sent', sent: 0 })
   }
 
   const results = []
   let sent = 0
   let failed = 0
 
-  for (const order of orders) {
+  for (const order of pending) {
     const customer = order.customers as any
-    const store = order.stores as any
-
     if (!customer?.email) {
       results.push({ order: order.order_number, status: 'skipped', reason: 'no email' })
       continue
@@ -52,7 +68,7 @@ export async function GET(req: NextRequest) {
         productName: order.product_name,
         trackingId: order.tracking_id,
         shippingAddress: order.shipping_address,
-        storeName: store?.name || 'Benevita',
+        storeName: store.name,
       })
 
       const success = !emailResult.error
@@ -80,7 +96,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    summary: { total: orders.length, sent, failed },
+    summary: { total: pending.length, sent, failed },
     results,
   })
 }

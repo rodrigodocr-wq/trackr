@@ -11,6 +11,8 @@ interface Order {
   createdAt: string
   customerName: string
   customerEmail: string
+  storeName: string
+  shopDomain: string
 }
 
 interface Metrics {
@@ -38,15 +40,24 @@ export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [storeFilter, setStoreFilter] = useState('all')
 
   useEffect(() => {
-    fetch('/api/admin', { headers: { 'x-admin-secret': process.env.NEXT_PUBLIC_CRON_SECRET || '' } })
+    fetch('/api/admin', { headers: { 'x-admin-secret': 'a00be5a0381cb65ac395232e5b4868ae' } })
       .then(r => r.json())
-      .then(d => { setMetrics(d.metrics); setOrders(d.orders || []) })
+      .then(d => {
+        if (d.error) { setError(d.error); return }
+        setMetrics(d.metrics)
+        setOrders(d.orders || [])
+      })
+      .catch(() => setError('Failed to load'))
       .finally(() => setLoading(false))
   }, [])
+
+  const stores = [...new Set(orders.map(o => o.storeName))].filter(Boolean)
 
   const filtered = orders.filter(o => {
     const matchSearch = !search ||
@@ -55,7 +66,8 @@ export default function AdminDashboard() {
       o.customerName?.toLowerCase().includes(search.toLowerCase()) ||
       o.customerEmail?.toLowerCase().includes(search.toLowerCase())
     const matchStatus = statusFilter === 'all' || o.status === statusFilter
-    return matchSearch && matchStatus
+    const matchStore = storeFilter === 'all' || o.storeName === storeFilter
+    return matchSearch && matchStatus && matchStore
   })
 
   if (loading) return (
@@ -67,6 +79,12 @@ export default function AdminDashboard() {
     </div>
   )
 
+  if (error) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <p className="text-red-500">{error}</p>
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-black text-white py-4 px-6 sticky top-0 z-10">
@@ -75,9 +93,8 @@ export default function AdminDashboard() {
             <h1 className="text-lg font-bold tracking-widest">TRACKR</h1>
             <p className="text-gray-400 text-xs">Admin Dashboard</p>
           </div>
-          <div className="text-right">
-            <p className="text-gray-400 text-xs">Wellvita Site</p>
-            <p className="text-gray-500 text-xs">nhde1w-4m.myshopify.com</p>
+          <div className="flex gap-3 text-xs text-gray-400">
+            {stores.map(s => <span key={s} className="bg-white/10 px-2 py-1 rounded">{s}</span>)}
           </div>
         </div>
       </div>
@@ -86,11 +103,11 @@ export default function AdminDashboard() {
         {metrics && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[
-              { label: 'Total orders',        value: metrics.totalOrders,     color: 'text-gray-900' },
-              { label: 'Active orders',       value: metrics.activeOrders,    color: 'text-blue-600' },
-              { label: 'Delivered',           value: metrics.deliveredOrders, color: 'text-green-600' },
-              { label: 'Tracking IDs issued', value: metrics.totalTracking,   color: 'text-purple-600' },
-              { label: 'Emails sent',         value: metrics.totalEmails,     color: 'text-orange-600' },
+              { label: 'Total Orders',      value: metrics.totalOrders,     color: 'text-gray-900' },
+              { label: 'Active Orders',     value: metrics.activeOrders,    color: 'text-blue-600' },
+              { label: 'Delivered',         value: metrics.deliveredOrders, color: 'text-green-600' },
+              { label: 'Tracking IDs',      value: metrics.totalTracking,   color: 'text-purple-600' },
+              { label: 'Emails Sent',       value: metrics.totalEmails,     color: 'text-orange-600' },
             ].map(m => (
               <div key={m.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
                 <p className="text-xs text-gray-400 mb-1">{m.label}</p>
@@ -108,6 +125,14 @@ export default function AdminDashboard() {
             onChange={e => setSearch(e.target.value)}
             className="flex-1 border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
           />
+          <select
+            value={storeFilter}
+            onChange={e => setStoreFilter(e.target.value)}
+            className="border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+          >
+            <option value="all">All stores</option>
+            {stores.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
@@ -135,8 +160,8 @@ export default function AdminDashboard() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    {['Order', 'Customer', 'Product', 'Tracking ID', 'Status', 'Date', 'Action'].map(h => (
-                      <th key={h} className="text-left px-6 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">{h}</th>
+                    {['Store', 'Order', 'Customer', 'Product', 'Tracking ID', 'Status', 'Date', 'Action'].map(h => (
+                      <th key={h} className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -145,20 +170,23 @@ export default function AdminDashboard() {
                     const s = STATUS_MAP[order.status] || { label: order.status, color: 'bg-gray-100 text-gray-600' }
                     return (
                       <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 font-semibold text-gray-900">#{order.orderNumber}</td>
-                        <td className="px-6 py-4">
-                          <p className="font-medium text-gray-900">{order.customerName}</p>
+                        <td className="px-4 py-3">
+                          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded font-medium">{order.storeName}</span>
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-gray-900">#{order.orderNumber}</td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-gray-900 text-xs">{order.customerName}</p>
                           <p className="text-gray-400 text-xs">{order.customerEmail}</p>
                         </td>
-                        <td className="px-6 py-4 text-gray-600 max-w-[200px] truncate">{order.productName}</td>
-                        <td className="px-6 py-4 font-mono text-xs text-gray-700">{order.trackingId}</td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${s.color}`}>{s.label}</span>
+                        <td className="px-4 py-3 text-gray-600 text-xs max-w-[150px] truncate">{order.productName}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{order.trackingId}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${s.color}`}>{s.label}</span>
                         </td>
-                        <td className="px-6 py-4 text-gray-400 text-xs whitespace-nowrap">{formatDate(order.createdAt)}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{formatDate(order.createdAt)}</td>
+                        <td className="px-4 py-3">
                           <a href={`/track/${order.trackingId}`} target="_blank" rel="noopener noreferrer" className="text-xs text-black underline hover:no-underline">
-                            View tracking
+                            View
                           </a>
                         </td>
                       </tr>

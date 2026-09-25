@@ -12,7 +12,11 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceClient()
 
   const [ordersRes, emailsRes, trackingRes] = await Promise.all([
-    supabase.from('orders').select('id, order_number, product_name, status, tracking_id, created_at, customers(name, email)', ).order('created_at', { ascending: false }).limit(50),
+    supabase
+      .from('orders')
+      .select('id, order_number, product_name, status, tracking_id, created_at, customers(name, email), stores(name, shop_domain)')
+      .order('created_at', { ascending: false })
+      .limit(200),
     supabase.from('email_logs').select('id', { count: 'exact' }),
     supabase.from('tracking_records').select('id', { count: 'exact' }),
   ])
@@ -25,13 +29,7 @@ export async function GET(req: NextRequest) {
   const totalTracking = trackingRes.count || 0
 
   return NextResponse.json({
-    metrics: {
-      totalOrders,
-      activeOrders,
-      deliveredOrders,
-      totalEmails,
-      totalTracking,
-    },
+    metrics: { totalOrders, activeOrders, deliveredOrders, totalEmails, totalTracking },
     orders: orders.map((o: any) => ({
       id: o.id,
       orderNumber: o.order_number,
@@ -39,8 +37,10 @@ export async function GET(req: NextRequest) {
       status: o.status,
       trackingId: o.tracking_id,
       createdAt: o.created_at,
-      customerName: (o.customers as any)?.name,
-      customerEmail: (o.customers as any)?.email,
+      customerName: o.customers?.name,
+      customerEmail: o.customers?.email,
+      storeName: o.stores?.name || 'Unknown',
+      shopDomain: o.stores?.shop_domain || '',
     }))
   })
 }
